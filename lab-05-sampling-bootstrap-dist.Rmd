@@ -12,13 +12,16 @@ output:
     code_folding: hide
     df_print: paged
 editor_options:
-  chunk_output_type: console
+  chunk_output_type: inline
+  markdown: 
+    wrap: 100
 ---
 
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(lubridate)
 library(janitor)
+library(patchwork)
 
 knitr::opts_chunk$set(
   warning = FALSE,
@@ -28,49 +31,48 @@ knitr::opts_chunk$set(
 
 # Overview
 
-In EAES we almost never observe an entire population. Instead, we take **samples** and compute **point estimates** (like a mean) to infer **population parameters**.
+In EAES we almost never observe an entire population. Instead, we take **samples** and compute
+**point estimates** (like a mean) to infer **population parameters**.
 
 This lab focuses on four core ideas:
 
-1. **Relative error** of point estimates (accuracy)
-2. **Standard error (SE)** and how it changes with sample size
-3. How **replication** (many repeated samples) creates an approximate **sampling distribution**
-4. (Intro) **Bootstrap** distributions: resampling from one sample to approximate uncertainty
+1.  **Relative error** of point estimates (accuracy)
+2.  **Standard error (SE)** and how it changes with sample size
+3.  How **replication** (many repeated samples) creates an approximate **sampling distribution**
+4.  (Intro) **Bootstrap** distributions: resampling from one sample to approximate uncertainty
 
 ## Coding expectations (Week 7+)
 
-This lab uses a mix of:
-- **Fill-in-the-blank** (quick checks)
-- **Partial pipelines** (you finish the analysis)
-- **From-scratch chunks** (you write the full solution)
+This lab uses a mix of: - **Fill-in-the-blank** (quick checks) - **Partial pipelines** (you finish
+the analysis) - **From-scratch chunks** (you write the full solution)
 
-Use slides + past labs + Discord as needed, but make sure your final code is **your own** and runs **top-to-bottom**.
+Use slides + past labs + Discord as needed, but make sure your final code is **your own** and runs
+**top-to-bottom**.
 
----
+----------------------------------------------------------------------------------------------------
 
 # Data
 
 ## Load data (partial pipeline)
 
-Complete the pipeline so `df` is a clean tibble. Filter for 2023, and replace fill values (-9999) with na.
+Complete the pipeline so `df` is a clean tibble. Filter for 2023, and replace fill values (-9999)
+with na.
 
 ```{r load_data, echo=TRUE, eval=FALSE}
 # GOAL: Read the CSV from the repo and clean column names.
 # TODO: finish this pipeline.
 
-df <- read_csv("data/us-ams-simple.csv", na = c("____")) %>%
-  ___ %>%
-  ___
+df <- read_csv("data/us-ams-simple.csv", na = c("-9999")) %>%
+  clean_names() %>%
+  filter(year_local == "2023")
 
 glimpse(df)
 ```
 
-## Derive time columns 
+## Derive time columns
 
-Write code to add:
-- `date` from `year_local` + `doy`
-- `month` as labeled abbreviated month (Jan–Dec)
-- `day_night` as "Day"/"Night" from `daytime` (0/1)
+Write code to add: - `date` from `year_local` + `doy` - `month` as labeled abbreviated month
+(Jan–Dec) - `day_night` as "Day"/"Night" from `daytime` (0/1)
 
 ```{r derive_time, echo=TRUE, eval=FALSE}
 # GOAL: Create date/month/day_night columns.
@@ -80,10 +82,10 @@ df <- df %>%
  mutate(
     # TODO: create a Date column from year_local and doy
     # HINT: Jan 1 is DOY = 1, so use (doy - 1) with origin = "YYYY-01-01"
-    date = as.Date(___ - 1, origin = paste0(___, "-01-01")),
+    date = as.Date(doy - 1, origin = paste0(2023, "-01-01")),
 
     # TODO: create a month column (numeric 1–12 or labeled months)
-    month = month(___, label = TRUE, abbr = TRUE),
+    month = month(date, label = TRUE, abbr = TRUE),
 
     # TODO: make a day/night label using daytime (0/1)
     day_night = if_else(daytime == 1, "Day", "Night")
@@ -93,26 +95,26 @@ df %>% count(month)
 df %>% count(day_night)
 ```
 
----
+----------------------------------------------------------------------------------------------------
 
 # Population parameters vs point estimates
 
 ## 1) Choose variables (fill-in)
 
-Pick **2–3 variables** to analyze. Include at least **one flux** variable (e.g., `nee`, `fc`, `gpp`) and optionally one meteorological variable (e.g., `ta`, `le`).
+Pick **2–3 variables** to analyze. Include at least **one flux** variable (e.g., `nee`, `fc`, `gpp`)
+and optionally one meteorological variable (e.g., `ta`, `le`).
 
 ```{r choose_vars, echo=TRUE, eval=FALSE}
 vars <- c(
-  ___,  # e.g., "fc"
-  ___,  # e.g., "ta"
-  ___   # optional third variable
+  "gpp",  # e.g., "fc"
+  "ts"
 )
 
 # CHECK: confirm these columns exist (should return character(0))
-setdiff(vars, names(df))
+setdiff(vars, names(df)) #good to go!
 ```
 
----
+----------------------------------------------------------------------------------------------------
 
 ## 2) Compute population parameters (partial pipeline)
 
@@ -139,78 +141,83 @@ pop <- df %>%
     names_sep = "__",
     values_to = "value"
   ) %>%   
-  pivot_wider(names_from = ___, values_from = ___)       # TODO: pivot_wider
+  pivot_wider(names_from = "stat", values_from = "value")       # TODO: pivot_wider
 
 pop
 ```
 
-**Prompt (2–3 sentences):** Which variable has the largest population SD? What does that imply about the variability of that process?
+**Prompt (2–3 sentences):** Which variable has the largest population SD? What does that imply about
+the variability of that process?
 
-> *Write your answer here.*
+> *GPP has the largest population SD. This implies that GPP has more variability compared to soil
+> temperature.*
 
----
+----------------------------------------------------------------------------------------------------
 
 # Relative error for point estimates (accuracy)
 
 We will estimate the population mean with a sample mean, then compute **relative error**:
 
-\[
+$$
 \text{Relative error (\%)} = 100 \times \frac{|\mu - \bar{x}|}{|\mu|}
-\]
+$$
 
-## 3) One sample: compute relative error 
+## 3) One sample: compute relative error
 
 Write code to:
 
-1. set a seed
-2. choose a sample size `n_samp`
-3. draw a simple random sample `samp`
-4. compute `sample_mean` for each variable in `vars`
-5. join to population means from `pop`
-6. compute `rel_error_pct` for each variable
+1.  set a seed
+2.  choose a sample size `n_samp`
+3.  draw a simple random sample `samp`
+4.  compute `sample_mean` for each variable in `vars`
+5.  join to population means from `pop`
+6.  compute `rel_error_pct` for each variable
 
 Return a tibble with columns: `var`, `sample_mean`, `pop_mean`, `rel_error_pct`.
 
 ```{r one_sample_relerr, echo=TRUE, eval=FALSE}
 # GOAL: Relative error for point estimates from one random sample.
 
-set.seed(___)
-n_samp <- ___
+set.seed(480)
+n_samp <- 1000
 
-samp <- ___
+samp <- df %>% slice_sample(n = n_samp)
 
 # get mean point estimate for each variable
 est <- samp %>%
-  summarise(across(all_of(___), ~mean(.x, na.rm = ___))) %>%
+  summarise(across(all_of(vars), ~mean(.x, na.rm = TRUE))) %>%
   pivot_longer(everything(), names_to = "var", values_to = "sample_mean")
 
 # compute the relative error for each variable
 relerr <- est %>%
-  left_join(pop %>% select(var, pop_mean = mean), by = "var") %>%
-  mutate(rel_error_pct = 100 * abs(___ - ___) / abs(___)) %>%
+  left_join(pop %>% select(var, sample_mean = mean), by = "var") %>%
+  mutate(rel_error_pct = 100 * abs(sample_mean.x - sample_mean.y) / abs(sample_mean.x)) %>%
   arrange(desc(rel_error_pct))
 
 relerr
 ```
 
-**Prompt (3–4 sentences):** Which variable had the largest relative error at your chosen `n_samp`?  
+**Prompt (3–4 sentences):** Which variable had the largest relative error at your chosen `n_samp`?\
 Give a scientific reason why some variables are harder to estimate from a small sample.
 
-> *Write your answer here.*
+> *Soil temperature had the larger relative error.* *High variability can make estimates more
+> difficult/less accurate with small sample size because each measurement is more heavily weighted.*
 
----
+----------------------------------------------------------------------------------------------------
 
 ## 4) Relative error vs sample size (partial code + you complete)
 
-We will focus on **one variable** and simulate many repeated studies. The next code chunk is doing quite a lot. Please review the #comments throughout and check you understand generally what each section is doing.
+We will focus on **one variable** and simulate many repeated studies. The next code chunk is doing
+quite a lot. Please review the #comments throughout and check you understand generally what each
+section is doing.
 
 ```{r relerr_by_n, echo=TRUE, eval=FALSE}
 set.seed(480)
 
-n_grid <- c(___, ___, ___, ___)   # e.g., c(25, 100, 300, 1000)
-reps <- ___                        # e.g., 500 or 1000
+n_grid <- c(25, 100, 300, 1000)   # e.g., c(25, 100, 300, 1000)
+reps <- 1000                        # e.g., 500 or 1000
 
-target_var <- "___"                # e.g., "fch4" or "fc"
+target_var <- "gpp"                # e.g., "fch4" or "fc"
 
 # Pull the population vector (remove missing values once, up front)
 x_pop <- df[[target_var]]
@@ -236,7 +243,7 @@ for (i in seq_along(n_grid)) {
     x_samp <- sample(x_pop, size = n_samp, replace = FALSE)
     xbar <- mean(x_samp)
 
-    relerrs[j] <- 100 * abs(pop_mean_target - ___) / abs(pop_mean_target)
+    relerrs[j] <- 100 * abs(pop_mean_target - xbar) / abs(pop_mean_target)
   }
 
   sim_list[[i]] <- tibble(
@@ -252,53 +259,64 @@ sim_relerr
 
 ### Summarize + plot (from scratch)
 
-1) Summarize the simulated relative error by `n` using:
-- median
-- 90th percentile
+1)  Summarize the simulated relative error by `n` using:
 
-2) Make a plot that communicates “relative error decreases with n”.
+-   median
+-   90th percentile
+
+2)  Make a plot that communicates “relative error decreases with n”.
 
 ```{r summarize_plot_relerr, echo=TRUE, eval=FALSE}
 # GOAL: Summarize and plot the relationship between n and relative error.
 # TODO: write your own code.
 
-summary_relerr <- ___
+summary_relerr <- sim_relerr %>% 
+  group_by(n) %>% 
+  summarize(mean = mean(rel_error_pct), 
+            ninetiethPercentile = quantile(rel_error_pct, probs=0.9), 
+            median = median(rel_error_pct))
 summary_relerr
 
-p_relerr <- ___
-p_relerr
+
+summary_relerr %>%
+  ggplot(aes(x = n, y = mean)) + 
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  labs(x = "n Samples", y = "Average Relative Error") + 
+  theme_bw()
 ```
 
-**Prompt (3–4 sentences):** Describe the pattern. Is improvement from n=25→100 larger than 300→1000?  
+**Prompt (3–4 sentences):** Describe the pattern. Is improvement from n=25→100 larger than 300→1000?
 Why does accuracy show “diminishing returns” as n increases?
 
-> *Write your answer here.*
+> *I chose a quadratic line to show the relationship. The improvement from 25 --\> 100 is larger
+> than from 300 --\> 1000. Accuracy shows diminishing returns because with each n, you're getting
+> closer to the truth. One additional observation isn't making as much of a difference as you
+> increase n.*
 
----
+----------------------------------------------------------------------------------------------------
 
 # Standard error and sampling distributions
 
 For the sample mean, the standard error is approximately:
 
-\[
+$$
 SE(\bar{x}) \approx \frac{\sigma}{\sqrt{n}}
-\]
+$$
 
-where \(\sigma\) is population SD.
+where $\sigma$ is population SD.
 
 ## 5) Theory vs simulation (partial pipeline)
 
-Compute:
-- theoretical SE
-- simulated SD of sample means (over many replications)
+Compute: - theoretical SE - simulated SD of sample means (over many replications)
 
 ```{r se_compare, echo=TRUE, eval=FALSE}
 set.seed(480)
 
 # TODO: pick a variable and sample size
-target_var <- ___
-n_samp <- ___
-reps <- ___
+target_var <- "gpp"
+n_samp <- 1000 #seems fair since theres ~17000 obs 
+reps <- 5000
 
 pop_sd_target <- pop %>% filter(var == target_var) %>% pull(sd)
 pop_mean_target <- pop %>% filter(var == target_var) %>% pull(mean)
@@ -308,8 +326,8 @@ means <- replicate(
   mean(sample(df[[target_var]], size = n_samp, replace = FALSE), na.rm = TRUE)
 )
 
-se_theory <- ___
-se_sim    <- ___
+se_theory <- pop_sd_target / sqrt(n_samp)
+se_sim    <- sd(means)
 
 tibble(
   target_var = target_var,
@@ -317,6 +335,8 @@ tibble(
   se_theory = se_theory,
   se_simulated = se_sim
 )
+
+(se_theory - se_sim) / (se_theory * 100)
 ```
 
 ### Plot the sampling distribution (fill-in)
@@ -324,7 +344,7 @@ tibble(
 ```{r plot_sampling_dist, echo=TRUE, eval=FALSE}
 tibble(mean_est = means) %>%
   ggplot(aes(x = mean_est)) +
-  geom_histogram(bins = ___, alpha = 0.85) +
+  geom_histogram(bins = 50, alpha = 0.85) +
   geom_vline(xintercept = pop_mean_target, linetype = "dashed", linewidth = 1.1) +
   theme_classic(base_size = 18) +
   labs(
@@ -335,12 +355,18 @@ tibble(mean_est = means) %>%
   )
 ```
 
-**Prompt (3–5 sentences):** How close were `se_theory` and `se_simulated`?  
+**Prompt (3–5 sentences):** How close were `se_theory` and `se_simulated`?\
 What changes if you increase `n_samp` vs increase `reps`?
 
-> *Write your answer here.*
+> *se_theory and se_simulated were close; 0.3275511 vs. 0.3169247.* *I tested it systematically; I
+> increased n_samp (holding reps constant) and vice versa. I then calculated the percent difference
+> (se_theory - se_simulated) / (se_theory) x 100 to see what the percent difference between the
+> values is. Results below.* *n_samp = 10, 100, 1000, 10000, % difference = 0.0000256, 0.0000730,
+> 0.000324, 0.0035 - the percent difference gets bigger as n_samp increase.* *reps = 5, 50, 500,
+> 5000, 50000, % difference = 0.0030, -0.00023, 0.0000963, 0.000515, 0.00027 - the percent
+> difference gets smaller as reps increase*
 
----
+----------------------------------------------------------------------------------------------------
 
 # Bootstrap intuition (one sample, many resamples)
 
@@ -348,34 +374,34 @@ Bootstrap resampling approximates uncertainty **when you only have one sample**.
 
 Key idea: treat your sample as a stand-in for the population and resample **with replacement**.
 
-## 6) Bootstrap distribution of the mean 
+## 6) Bootstrap distribution of the mean
 
 Write code to:
 
-- take ONE sample of size `n_samp` from `df`
-- generate `B` bootstrap resamples (with replacement) from that sample
-- compute bootstrap means
-- compute bootstrap SD
-- plot the bootstrap distribution
+-   take ONE sample of size `n_samp` from `df`
+-   generate `B` bootstrap resamples (with replacement) from that sample
+-   compute bootstrap means
+-   compute bootstrap SD
+-   plot the bootstrap distribution
 
 ```{r bootstrap_mean, echo=TRUE, eval=FALSE}
 set.seed(480)
 
 # TODO: choose settings
-target_var <- ___
-n_samp <- ___
-B <- ___
+target_var <- "gpp"
+n_samp <- 100
+B <- 50000
 
 # one "field campaign" sample
 samp <- tibble(x = sample(x_pop, size = n_samp, replace = FALSE))
 
 # bootstrap sampling of the mean
 boot_means <- replicate(
-  ___,
-  mean(sample(samp$x, size = ___, replace = TRUE))
+  B,
+  mean(sample(samp$x, size = n_samp, replace = TRUE))
 )
 
-boot_sd <- sd(___)
+boot_sd <- sd(boot_means)
 
 tibble(
   sample_mean = mean(samp$x),
@@ -385,20 +411,450 @@ tibble(
 
 ```{r plot_boot, echo=TRUE, eval=FALSE}
 # TODO: plot boot_means and mark the sample mean
-___
+bmeans <- as.tibble(boot_means)
+ggplot(aes(x = value), data = bmeans) + 
+  geom_histogram() + 
+  theme_bw() + 
+  geom_vline(xintercept = mean(samp$x), color = 'red') + 
+  labs(title = "Bootstrap distribution of the mean", subtitle = "Sample mean denoted as vertical line; n = 100, B = 50000")
 ```
 
-**Prompt (4–6 sentences):** Compare the bootstrap distribution to the sampling distribution from Part III.  
+**Prompt (4–6 sentences):** Compare the bootstrap distribution to the sampling distribution from
+Part III.\
 What is the bootstrap trying to approximate? When is bootstrap especially useful in EAES?
 
-> *Write your answer here.*
+> *The sampling distribution is a slightly 'cleaner'/more 'perfect' normal distribution than the
+> bootstrap version. I would expect bootstrapping to be especially useful with small datasets when
+> the 'true' population statistic is unknown. This is probably most field-based datasets in EAES. It
+> likely wouldn't be as helpful for remotely sensed datasets or constantly monitoring datasets (like
+> NOAA's Mauna Loa) that are huge.*
 
----
+----------------------------------------------------------------------------------------------------
+
+# Part II — Bootstrap under random vs non-random sampling (SWC)
+
+In Part I, you learned that the bootstrap approximates uncertainty **conditional on the sample you
+observed**.
+
+Now you will test a key warning:
+
+> Bootstrap can quantify *precision* even when the estimate is *biased*.
+
+We will focus on **soil water content (`swc`)**.
+
+-   **Population**: all 2023 half-hour records (after removing `NA`)
+-   **Sample**: one “field campaign” sample of size `n = 200`
+-   **Bootstrap**: resample *within the sample* (with replacement) many times
+
+## Preparation (recommended)
+
+```{r part2_prep, echo=TRUE, eval=FALSE}
+# GOAL: Ensure df exists (loaded in Part I) and create a clean SWC population vector.
+
+swc_pop <- df$swc
+swc_pop <- swc_pop[!is.na(swc_pop)]
+
+pop_mean_swc <- mean(swc_pop)
+pop_sd_swc   <- sd(swc_pop)
+
+tibble(
+  pop_mean_swc = pop_mean_swc,
+  pop_sd_swc   = pop_sd_swc,
+  n_pop = length(swc_pop)
+)
+```
+
+----------------------------------------------------------------------------------------------------
+
+## Exercise 1 — Random sample → bootstrap distribution (baseline)
+
+**Task:** Draw a *simple random sample* of `n = 200` from the SWC population, then bootstrap the
+mean.
+
+```{r ex1_random_bootstrap, echo=TRUE, eval=FALSE}
+set.seed(480)
+
+n_samp <- 200
+B <- 4000
+
+# 1) Draw a random sample (no replacement) from the population vector
+swc_samp_random <- sample(swc_pop, size = n_samp, replace = FALSE)
+
+# 2) Bootstrap the mean (resample WITH replacement from the sample)
+boot_means_random <- replicate(
+  B,
+  mean(sample(swc_samp_random, size = n_samp, replace = TRUE))
+)
+
+# 3) Summarize
+tibble(
+  pop_mean = pop_mean_swc,
+  sample_mean = mean(swc_samp_random),
+  boot_sd = sd(boot_means_random)
+)
+
+#sd(sample(swc_samp_random, size = n_samp, replace = TRUE))
+#7.785273/ 0.5442335
+#14.30502 ^2
+```
+
+```{r ex1_plot_random_boot, echo=TRUE, eval=FALSE}
+# GOAL: Plot the bootstrap distribution and mark (i) sample mean and (ii) population mean.
+
+tibble(boot_mean = boot_means_random) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 100, alpha = 0.85) +
+  geom_vline(xintercept = mean(swc_samp_random), linetype = "dashed", linewidth = 1.1) +
+  geom_vline(xintercept = pop_mean_swc, linetype = "solid", linewidth = 1.1) +
+  theme_classic(base_size = 18) +
+  labs(
+    x = "Bootstrap mean (swc)",
+    y = "Count",
+    title = "Bootstrap distribution (random sample)",
+    subtitle = "Dashed = sample mean; Solid = population mean"
+  )
+
+random_graph <- tibble(boot_mean = boot_means_random) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 100, alpha = 0.85) +
+  geom_vline(xintercept = mean(swc_samp_random), linetype = "dashed", linewidth = 1.1, color = "red") +
+  geom_vline(xintercept = pop_mean_swc, linetype = "solid", linewidth = 1.1, color = "blue") +
+  theme_classic(base_size = 18) +
+  xlim(25, 38) + 
+  labs(
+    x = " ",
+    y = " ",
+    title = "Random",
+#    subtitle = "Dashed = sample mean; Solid = population mean"
+  )
+```
+
+**Prompt (3–4 sentences):** Is the bootstrap distribution centered near the population mean?\
+What does the bootstrap SD represent here?
+
+> *It's centered quite close; it's only \~1% off.* *The bootstrap SD represents the sample SD
+> divided by the square root of the number of samples, squared*
+
+----------------------------------------------------------------------------------------------------
+
+## Exercise 2 — Non-random sample (summer-only) → bootstrap distribution (bias example)
+
+**Task:** Create a **summer-only** sample (Jun–Aug) of size `n = 200` and bootstrap the mean.
+
+> This simulates a field campaign that only measured during summer.
+
+```{r ex2_summer_sample, echo=TRUE, eval=FALSE}
+# GOAL: Build a summer-only pool of SWC observations (Jun–Aug), then sample from that pool.
+
+# TODO: ensure df has a month column.
+# If you do not already have `month`, create it from a date column as in Part I.
+# HINT: month(date, label = TRUE, abbr = TRUE)
+
+df_summer <- df %>%
+  filter(month %in% c("Jun", "Jul", "Aug")) %>%
+  filter(!is.na(month))
+
+swc_summer_pool <- df_summer$swc
+
+length(swc_summer_pool)
+```
+
+```{r ex2_summer_bootstrap, echo=TRUE, eval=FALSE}
+set.seed(480)
+
+n_samp <- 200
+B <- 4000
+
+# 1) Draw a summer-only sample
+swc_samp_summer <- sample(swc_summer_pool, size = n_samp, replace = FALSE)
+
+# 2) Bootstrap the mean from that sample
+boot_means_summer <- replicate(
+  B,
+  mean(sample(swc_samp_summer, size = n_samp, replace = TRUE))
+)
+
+# 3) Summarize
+tibble(
+  pop_mean = pop_mean_swc,
+  summer_pool_mean = mean(swc_summer_pool),
+  sample_mean = mean(swc_samp_summer),
+  boot_sd = sd(boot_means_summer)
+)
+```
+
+```{r ex2_plot_summer_boot, echo=TRUE, eval=FALSE}
+# GOAL: Plot summer bootstrap and compare to population mean.
+
+tibble(boot_mean = boot_means_summer) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 100, alpha = 0.85) +
+  geom_vline(xintercept = mean(swc_samp_summer, na.rm = TRUE), linetype = "dashed", linewidth = 1.1, color = "blue") +
+  geom_vline(xintercept = pop_mean_swc, linetype = "solid", linewidth = 1.1, color = "red") +
+  theme_classic(base_size = 18) +
+  labs(
+    x = "Bootstrap mean (swc)",
+    y = "Count",
+    title = "Bootstrap distribution (summer-only sample)",
+    subtitle = "Dashed = sample mean; Solid = population mean"
+  )
+
+summer_graph <- tibble(boot_mean = boot_means_summer) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 100, alpha = 0.85) +
+  geom_vline(xintercept = mean(swc_samp_summer, na.rm = TRUE), linetype = "dashed", linewidth = 1.1, color = "red") +
+  geom_vline(xintercept = pop_mean_swc, linetype = "solid", linewidth = 1.1, color = "blue") +
+  theme_classic(base_size = 18) +
+  xlim(25, 38) +
+  labs(
+    x = " ",
+    y = " ",
+    title = "Summer",
+#    subtitle = "Dashed = sample mean; Solid = population mean"
+  )
+```
+
+**Prompt (4–6 sentences):** Does the bootstrap distribution look “confident” (narrow) even if it’s
+centered far from the population mean?\
+Explain the difference between **precision** and **accuracy** in this example.\
+What *kind* of error is summer-only sampling introducing?
+
+> *Yes, the bootstrap distribution looks confident (narrow). I like this
+> [picture](https://external-preview.redd.it/the-difference-between-accuracy-and-precision-v0-PUb9LP_iITAohGix7_ZVbZuvRq0-faxc67V-PDag7uY.png?auto=webp&s=dd9d4ec803d27b7f73b86e809c0d341921241ef4)
+> to put 'precision' and 'accuracy' into more interpretable terms. There is high precision here (clustering) but low accuracy (far from bullseye, not accurate). We don't have a hypothesis for this project, so the error can't be classified as type one or two error. The error is probably 'systematic' error since we have biased the sample set. (I used Claude to tell me types of statistical error on this question). *
+
+----------------------------------------------------------------------------------------------------
+
+## Exercise 3 — Stratified sampling (by month) → bootstrap distribution
+
+**Task:** Build a **month-stratified** sample that takes the same number of observations per month.
+
+This is one way to make your sample more representative when the population has strong seasonality.
+
+```{r ex3_stratified_sample, echo=TRUE, eval=FALSE}
+set.seed(480)
+
+n_samp <- 240  # divisible by 12 makes this easy (20 per month)
+k_per_month <- n_samp / 12
+
+# 1) Create a month-stratified sample from df
+df_strat <- df %>%
+  filter(!is.na(month)) %>%
+  group_by(month) %>%
+  slice_sample(n = n_samp) %>%
+  ungroup()
+
+swc_samp_strat <- df_strat$swc
+swc_samp_strat <- swc_samp_strat[!is.na(swc_samp_strat)] #AR add
+
+# CHECK:
+df_strat %>% count(month)
+```
+
+```{r ex3_strat_bootstrap, echo=TRUE, eval=FALSE}
+set.seed(480)
+
+B <- 4000
+
+boot_means_strat <- replicate(
+  B,
+  mean(sample(swc_samp_strat, size = length(swc_samp_strat), replace = TRUE))
+)
+
+tibble(
+  pop_mean = pop_mean_swc,
+  sample_mean = mean(swc_samp_strat, na.rm = TRUE),
+  boot_sd = sd(boot_means_strat, na.rm = TRUE)
+)
+```
+
+```{r ex3_plot_strat_boot, echo=TRUE, eval=FALSE}
+# GOAL: Plot stratified bootstrap and compare to population mean.
+
+tibble(boot_mean = boot_means_strat) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 100, alpha = 0.85) +
+  geom_vline(xintercept = mean(swc_samp_strat), linetype = "dashed", linewidth = 1.1) +
+  geom_vline(xintercept = pop_mean_swc, linetype = "solid", linewidth = 1.1) +
+  theme_classic(base_size = 18) +
+  labs(
+    x = "Bootstrap mean (swc)",
+    y = "Count",
+    title = "Bootstrap distribution (month-stratified sample)",
+    subtitle = "Dashed = sample mean; Solid = population mean"
+  )
+
+month_graph <- tibble(boot_mean = boot_means_strat) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 100, alpha = 0.85) +
+  geom_vline(xintercept = mean(swc_samp_strat), linetype = "dashed", linewidth = 1.1, color = "red") +
+  geom_vline(xintercept = pop_mean_swc, linetype = "solid", linewidth = 1.1, color = "blue") +
+  theme_classic(base_size = 18) +
+  xlim(25, 38) +
+  labs(
+    x = " ",
+    y = " ",
+    title = "Month Stratified"
+#    subtitle = "Dashed = sample mean; Solid = population mean"
+  )
+```
+
+
+```{r, message = FALSE, warning = FALSE}
+month_graph + summer_graph + random_graph
+```
 
 
 
+
+
+**Prompt (4–6 sentences):** Compare the centers and spreads of the three bootstrap distributions
+(random vs summer-only vs stratified).\
+Which sampling design is most accurate for the annual mean? Which looks most precise?\
+What does this teach you about bootstrap and study design?
+
+> *Month-stratified sampling is the most accurate, followed by random and then summer only. Month stratified is the most precise. I've learned the importance of not considering statistical tests to be in a vacuum (you have to think about how it impacts the data and story you're telling) and the importance of considering different methods of bootstrapping for one scenario.*
+
+----------------------------------------------------------------------------------------------------
+
+# Part II wrap-up
+
+**One sentence to remember:**
+
+> Bootstrap measures uncertainty around your estimate, **given your sample** — it cannot rescue a
+> biased sample.
+
+----------------------------------------------------------------------------------------------------
 
 # Submission
 
-- Knit your `.Rmd` to HTML.
-- Commit and push both the `.Rmd` to your GitHub repo.
+-   Knit your `.Rmd` to HTML.
+-   Commit and push both the `.Rmd` to your GitHub repo.
+
+----------------------------------------------------------------------------------------------------
+
+# Part III — Estimating 95% Confidence Intervals with Bootstrap
+
+In this section you will use the bootstrap distributions you learned to create **95% confidence
+intervals**.
+
+Recall:
+
+A 95% bootstrap confidence interval can be estimated using the **2.5% and 97.5% quantiles** of the
+bootstrap distribution.
+
+## Exercise 1 — 95% CI for the Mean (SWC)
+
+Using the **random SWC sample from earlier**, compute a **95% bootstrap confidence interval for the
+mean**.
+
+```{r ex1_boot_ci_mean, echo=TRUE, eval=FALSE}
+# GOAL: compute the 2.5% and 97.5% quantiles of the bootstrap distribution
+
+quantile(boot_means_random, probs = c(0.025, 0.975))
+
+#pop_mean_swc
+```
+
+**Prompt:**
+
+Does the confidence interval contain the **true population mean (`pop_mean_swc`)**?\
+What does this tell you about the uncertainty of the estimate?
+
+> *The CI eoes contain the true population mean. This tells me there's low uncertainty of the estimate. *
+
+----------------------------------------------------------------------------------------------------
+
+## Exercise 2 — Visualizing the Confidence Interval
+
+Modify the bootstrap histogram from Part II so that the **95% CI is shown on the plot**.
+
+```{r ex2_plot_ci, echo=TRUE, eval=FALSE}
+boot_ci <- quantile(boot_means_random, probs = c(0.025, 0.975))
+
+tibble(boot_mean = boot_means_random) %>%
+  ggplot(aes(x = boot_mean)) +
+  geom_histogram(bins = 50, alpha = 0.8) +
+  geom_vline(xintercept = boot_ci, color = "red", linewidth = 1.1) +
+  geom_vline(xintercept = mean(swc_samp_random), linetype = "dashed") +
+  theme_classic(base_size = 18) #cool!
+```
+
+**Prompt:**
+
+Explain what the **red vertical lines** represent.
+
+> *The red vertical lines are the bounds of the confidence interval. There is a 95% likelihood that the true population mean falls between those two values.*
+
+----------------------------------------------------------------------------------------------------
+
+## Exercise 3 — Confidence Intervals for a Linear Model
+
+Choose:
+
+-   one **response variable**
+-   one **predictor variable**
+
+from the dataset.
+
+Examples:
+
+-   `swc ~ ta`
+-   `swc ~ le`
+-   `gpp ~ ta`
+
+```{r ex3_fit_model, echo=TRUE, eval=FALSE}
+df_sample <- df %>% slice_sample(n = 1000, replace = FALSE)
+
+response_var <- "gpp"
+predictor_var <- "ta"
+
+model <- lm(df[[response_var]] ~ df[[predictor_var]])
+
+coef(model)
+```
+
+### Bootstrap the regression
+
+> *Code not working and I have manuscript revisions and a manuscript draft due (**crying**) - skippign this one !*
+
+```{r ex3_bootstrap_lm, echo=TRUE, eval=FALSE}
+set.seed(480)
+
+B <- 2000
+
+#boot_coef <- replicate(B, {
+
+#  samp_rows <- df_sample %>% slice_sample(n = nrow(df_sample), replace = TRUE)
+
+#  fit <- lm(
+#    samp_rows[[response_var]] ~ samp_rows[[predictor_var]]
+#  )
+
+#  coef(fit)
+
+#})
+
+#boot_coef <- t(boot_coef)
+```
+
+### Compute confidence intervals
+
+```{r ex3_ci_params, echo=TRUE, eval=FALSE}
+#quantile(boot_coef[,1], probs = c(0.025, 0.975))  # intercept CI
+#quantile(boot_coef[,2], probs = c(0.025, 0.975))  # slope CI
+```
+
+**Prompt:**
+
+Interpret the slope confidence interval.
+
+-   Does it include zero?
+-   What does that imply about the relationship between the predictor and response variable?
+
+----------------------------------------------------------------------------------------------------
+
+# Submission
+
+-   Knit your `.Rmd` to HTML.
+-   Commit and push both the `.Rmd` to your GitHub repo.
