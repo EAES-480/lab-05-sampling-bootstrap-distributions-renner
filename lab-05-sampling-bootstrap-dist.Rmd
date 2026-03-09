@@ -58,7 +58,7 @@ Use slides + past labs + Discord as needed, but make sure your final code is **y
 Complete the pipeline so `df` is a clean tibble. Filter for 2023, and replace fill values (-9999)
 with na.
 
-```{r load_data, echo=TRUE, eval=FALSE}
+```{r load_data, echo=TRUE, eval=TRUE}
 # GOAL: Read the CSV from the repo and clean column names.
 # TODO: finish this pipeline.
 
@@ -74,7 +74,7 @@ glimpse(df)
 Write code to add: - `date` from `year_local` + `doy` - `month` as labeled abbreviated month
 (Jan–Dec) - `day_night` as "Day"/"Night" from `daytime` (0/1)
 
-```{r derive_time, echo=TRUE, eval=FALSE}
+```{r derive_time, echo=TRUE, eval=TRUE}
 # GOAL: Create date/month/day_night columns.
 # HINT: DOY is 1-indexed, so use (doy - 1) with origin "YYYY-01-01".
 
@@ -104,7 +104,7 @@ df %>% count(day_night)
 Pick **2–3 variables** to analyze. Include at least **one flux** variable (e.g., `nee`, `fc`, `gpp`)
 and optionally one meteorological variable (e.g., `ta`, `le`).
 
-```{r choose_vars, echo=TRUE, eval=FALSE}
+```{r choose_vars, echo=TRUE, eval=TRUE}
 vars <- c(
   "gpp",  # e.g., "fc"
   "ts"
@@ -122,7 +122,7 @@ Complete the code to compute **population mean** and **population SD** for each 
 
 Your output should be a tibble named `pop` with columns: `var`, `mean`, `sd`.
 
-```{r pop_params, echo=TRUE, eval=FALSE}
+```{r pop_params, echo=TRUE, eval=TRUE}
 # GOAL: Create a tidy table of population parameters for vars.
 # TODO: complete this pipeline.
 
@@ -175,7 +175,7 @@ Write code to:
 
 Return a tibble with columns: `var`, `sample_mean`, `pop_mean`, `rel_error_pct`.
 
-```{r one_sample_relerr, echo=TRUE, eval=FALSE}
+```{r one_sample_relerr, echo=TRUE, eval=TRUE}
 # GOAL: Relative error for point estimates from one random sample.
 
 set.seed(480)
@@ -211,7 +211,7 @@ We will focus on **one variable** and simulate many repeated studies. The next c
 quite a lot. Please review the #comments throughout and check you understand generally what each
 section is doing.
 
-```{r relerr_by_n, echo=TRUE, eval=FALSE}
+```{r relerr_by_n, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 n_grid <- c(25, 100, 300, 1000)   # e.g., c(25, 100, 300, 1000)
@@ -266,7 +266,7 @@ sim_relerr
 
 2)  Make a plot that communicates “relative error decreases with n”.
 
-```{r summarize_plot_relerr, echo=TRUE, eval=FALSE}
+```{r summarize_plot_relerr, echo=TRUE, eval=TRUE}
 # GOAL: Summarize and plot the relationship between n and relative error.
 # TODO: write your own code.
 
@@ -310,7 +310,7 @@ where $\sigma$ is population SD.
 
 Compute: - theoretical SE - simulated SD of sample means (over many replications)
 
-```{r se_compare, echo=TRUE, eval=FALSE}
+```{r se_compare, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 # TODO: pick a variable and sample size
@@ -341,7 +341,7 @@ tibble(
 
 ### Plot the sampling distribution (fill-in)
 
-```{r plot_sampling_dist, echo=TRUE, eval=FALSE}
+```{r plot_sampling_dist, echo=TRUE, eval=TRUE}
 tibble(mean_est = means) %>%
   ggplot(aes(x = mean_est)) +
   geom_histogram(bins = 50, alpha = 0.85) +
@@ -384,7 +384,7 @@ Write code to:
 -   compute bootstrap SD
 -   plot the bootstrap distribution
 
-```{r bootstrap_mean, echo=TRUE, eval=FALSE}
+```{r bootstrap_mean, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 # TODO: choose settings
@@ -409,7 +409,7 @@ tibble(
 )
 ```
 
-```{r plot_boot, echo=TRUE, eval=FALSE}
+```{r plot_boot, echo=TRUE, eval=TRUE}
 # TODO: plot boot_means and mark the sample mean
 bmeans <- as.tibble(boot_means)
 ggplot(aes(x = value), data = bmeans) + 
@@ -448,7 +448,7 @@ We will focus on **soil water content (`swc`)**.
 
 ## Preparation (recommended)
 
-```{r part2_prep, echo=TRUE, eval=FALSE}
+```{r part2_prep, echo=TRUE, eval=TRUE}
 # GOAL: Ensure df exists (loaded in Part I) and create a clean SWC population vector.
 
 swc_pop <- df$swc
@@ -471,7 +471,7 @@ tibble(
 **Task:** Draw a *simple random sample* of `n = 200` from the SWC population, then bootstrap the
 mean.
 
-```{r ex1_random_bootstrap, echo=TRUE, eval=FALSE}
+```{r ex1_random_bootstrap, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 n_samp <- 200
@@ -498,7 +498,7 @@ tibble(
 #14.30502 ^2
 ```
 
-```{r ex1_plot_random_boot, echo=TRUE, eval=FALSE}
+```{r ex1_plot_random_boot, echo=TRUE, eval=TRUE}
 # GOAL: Plot the bootstrap distribution and mark (i) sample mean and (ii) population mean.
 
 tibble(boot_mean = boot_means_random) %>%
@@ -543,7 +543,7 @@ What does the bootstrap SD represent here?
 
 > This simulates a field campaign that only measured during summer.
 
-```{r ex2_summer_sample, echo=TRUE, eval=FALSE}
+```{r ex2_summer_sample, echo=TRUE, eval=TRUE}
 # GOAL: Build a summer-only pool of SWC observations (Jun–Aug), then sample from that pool.
 
 # TODO: ensure df has a month column.
@@ -559,7 +559,7 @@ swc_summer_pool <- df_summer$swc
 length(swc_summer_pool)
 ```
 
-```{r ex2_summer_bootstrap, echo=TRUE, eval=FALSE}
+```{r ex2_summer_bootstrap, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 n_samp <- 200
@@ -583,7 +583,7 @@ tibble(
 )
 ```
 
-```{r ex2_plot_summer_boot, echo=TRUE, eval=FALSE}
+```{r ex2_plot_summer_boot, echo=TRUE, eval=TRUE}
 # GOAL: Plot summer bootstrap and compare to population mean.
 
 tibble(boot_mean = boot_means_summer) %>%
@@ -631,7 +631,7 @@ What *kind* of error is summer-only sampling introducing?
 
 This is one way to make your sample more representative when the population has strong seasonality.
 
-```{r ex3_stratified_sample, echo=TRUE, eval=FALSE}
+```{r ex3_stratified_sample, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 n_samp <- 240  # divisible by 12 makes this easy (20 per month)
@@ -651,7 +651,7 @@ swc_samp_strat <- swc_samp_strat[!is.na(swc_samp_strat)] #AR add
 df_strat %>% count(month)
 ```
 
-```{r ex3_strat_bootstrap, echo=TRUE, eval=FALSE}
+```{r ex3_strat_bootstrap, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 B <- 4000
@@ -668,7 +668,7 @@ tibble(
 )
 ```
 
-```{r ex3_plot_strat_boot, echo=TRUE, eval=FALSE}
+```{r ex3_plot_strat_boot, echo=TRUE, eval=TRUE}
 # GOAL: Plot stratified bootstrap and compare to population mean.
 
 tibble(boot_mean = boot_means_strat) %>%
@@ -748,7 +748,7 @@ bootstrap distribution.
 Using the **random SWC sample from earlier**, compute a **95% bootstrap confidence interval for the
 mean**.
 
-```{r ex1_boot_ci_mean, echo=TRUE, eval=FALSE}
+```{r ex1_boot_ci_mean, echo=TRUE, eval=TRUE}
 # GOAL: compute the 2.5% and 97.5% quantiles of the bootstrap distribution
 
 quantile(boot_means_random, probs = c(0.025, 0.975))
@@ -769,7 +769,7 @@ What does this tell you about the uncertainty of the estimate?
 
 Modify the bootstrap histogram from Part II so that the **95% CI is shown on the plot**.
 
-```{r ex2_plot_ci, echo=TRUE, eval=FALSE}
+```{r ex2_plot_ci, echo=TRUE, eval=TRUE}
 boot_ci <- quantile(boot_means_random, probs = c(0.025, 0.975))
 
 tibble(boot_mean = boot_means_random) %>%
@@ -803,7 +803,7 @@ Examples:
 -   `swc ~ le`
 -   `gpp ~ ta`
 
-```{r ex3_fit_model, echo=TRUE, eval=FALSE}
+```{r ex3_fit_model, echo=TRUE, eval=TRUE}
 df_sample <- df %>% slice_sample(n = 1000, replace = FALSE)
 
 response_var <- "gpp"
@@ -818,7 +818,7 @@ coef(model)
 
 > *Code not working and I have manuscript revisions and a manuscript draft due (**crying**) - skippign this one !*
 
-```{r ex3_bootstrap_lm, echo=TRUE, eval=FALSE}
+```{r ex3_bootstrap_lm, echo=TRUE, eval=TRUE}
 set.seed(480)
 
 B <- 2000
@@ -840,7 +840,7 @@ B <- 2000
 
 ### Compute confidence intervals
 
-```{r ex3_ci_params, echo=TRUE, eval=FALSE}
+```{r ex3_ci_params, echo=TRUE, eval=TRUE}
 #quantile(boot_coef[,1], probs = c(0.025, 0.975))  # intercept CI
 #quantile(boot_coef[,2], probs = c(0.025, 0.975))  # slope CI
 ```
