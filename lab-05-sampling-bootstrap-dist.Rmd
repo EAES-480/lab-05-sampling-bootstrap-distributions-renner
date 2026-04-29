@@ -17,6 +17,8 @@ editor_options:
     wrap: 100
 ---
 
+> GM GRADE 8.5/10 - Good overall effort with some strong writing and nice use of patchwork for comparing plots. However, there are some code issues (incorrect join in relative error calculation, missing x_pop definition in bootstrap section, and skipped Part III linear model), plus minor conceptual slips.
+
 ```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(lubridate)
@@ -203,6 +205,8 @@ Give a scientific reason why some variables are harder to estimate from a small 
 > *Soil temperature had the larger relative error.* *High variability can make estimates more
 > difficult/less accurate with small sample size because each measurement is more heavily weighted.*
 
+> GM: -0.5 There is a bug in the relative error calculation (you joined on the wrong column name, causing `sample_mean.x` / `sample_mean.y`). This led to incorrect results. Also, FC typically shows the largest relative error due to its mean being near zero.
+
 ----------------------------------------------------------------------------------------------------
 
 ## 4) Relative error vs sample size (partial code + you complete)
@@ -294,6 +298,8 @@ Why does accuracy show “diminishing returns” as n increases?
 > closer to the truth. One additional observation isn't making as much of a difference as you
 > increase n.*
 
+
+
 ----------------------------------------------------------------------------------------------------
 
 # Standard error and sampling distributions
@@ -366,6 +372,8 @@ What changes if you increase `n_samp` vs increase `reps`?
 > 5000, 50000, % difference = 0.0030, -0.00023, 0.0000963, 0.000515, 0.00027 - the percent
 > difference gets smaller as reps increase*
 
+> GM: -0.25 Good observation that they are close. But the main pattern to observe (simpler than your grid-search) is that increasing `n_samp` reduces the SE (narrows the distribution). Increasing `reps` improves the smoothness of the simulation but does not change the true SE.
+
 ----------------------------------------------------------------------------------------------------
 
 # Bootstrap intuition (one sample, many resamples)
@@ -428,6 +436,8 @@ What is the bootstrap trying to approximate? When is bootstrap especially useful
 > the 'true' population statistic is unknown. This is probably most field-based datasets in EAES. It
 > likely wouldn't be as helpful for remotely sensed datasets or constantly monitoring datasets (like
 > NOAA's Mauna Loa) that are huge.*
+
+> GM: -0.25 The bootstrap distribution is similar in shape to the sampling distribution. The bootstrap tries to approximate the sampling distribution of the mean when we only have one observed sample (the typical situation in EAES).
 
 ----------------------------------------------------------------------------------------------------
 
@@ -535,6 +545,8 @@ What does the bootstrap SD represent here?
 > *It's centered quite close; it's only \~1% off.* *The bootstrap SD represents the sample SD
 > divided by the square root of the number of samples, squared*
 
+> GM: -0.25 The bootstrap distribution is centered near the sample mean (dashed line), not the population mean. The bootstrap SD estimates the standard error of the sample mean and will be very simliar to the sample SD/sqrt(n)
+
 ----------------------------------------------------------------------------------------------------
 
 ## Exercise 2 — Non-random sample (summer-only) → bootstrap distribution (bias example)
@@ -622,6 +634,8 @@ What *kind* of error is summer-only sampling introducing?
 > *Yes, the bootstrap distribution looks confident (narrow). I like this
 > [picture](https://external-preview.redd.it/the-difference-between-accuracy-and-precision-v0-PUb9LP_iITAohGix7_ZVbZuvRq0-faxc67V-PDag7uY.png?auto=webp&s=dd9d4ec803d27b7f73b86e809c0d341921241ef4)
 > to put 'precision' and 'accuracy' into more interpretable terms. There is high precision here (clustering) but low accuracy (far from bullseye, not accurate). We don't have a hypothesis for this project, so the error can't be classified as type one or two error. The error is probably 'systematic' error since we have biased the sample set. (I used Claude to tell me types of statistical error on this question). *
+
+> GM: Good explanation using the accuracy vs precision analogy. Clear discussion of bias.
 
 ----------------------------------------------------------------------------------------------------
 
@@ -851,6 +865,8 @@ Interpret the slope confidence interval.
 
 -   Does it include zero?
 -   What does that imply about the relationship between the predictor and response variable?
+
+> GM: -0.5 - here we were looking for: "because the CI for the slope coefficient does include zero, we can state that with 95% confidence, there is a statistically significant relationship between x and y."
 
 ----------------------------------------------------------------------------------------------------
 
